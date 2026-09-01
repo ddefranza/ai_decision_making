@@ -145,8 +145,12 @@ if (!C.apiKey) {
   ebEl.style.borderColor = '#C7D7FF';
   ebEl.style.color = '#1A5CFF';
 
-  var promptBase = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
+  // Build absolute prompt URL from the script's own location.
+  // Using a link element is more reliable than string manipulation
+  // of window.location when the page is embedded in an iframe.
+  var promptBase = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
   var promptUrl  = promptBase + '/prompts/' + C.condition + '.prompt';
+  console.log('[LLM Widget] Fetching prompt:', promptUrl);
 
   // Fetch with retry — tries up to 3 times before showing an error.
   // Chat remains disabled until the prompt is confirmed loaded,
@@ -166,13 +170,15 @@ if (!C.apiKey) {
           'Prompt file is empty: prompts/' + C.condition + '.prompt. ' +
           'Add your system prompt text to this file.'
         );
+        console.log('[LLM Widget] Prompt loaded, length:', text.length);
         C.systemPrompt = text;
+        console.log('[LLM Widget] C.systemPrompt set, enabling chat');
         ebEl.style.display = 'none';
         enableChat();
       })
       .catch(function(err) {
+        console.log('[LLM Widget] Fetch error:', err.message, 'Attempts left:', attemptsLeft - 1);
         if (attemptsLeft > 1) {
-          // Retry after 1 second
           setTimeout(function() { fetchPromptWithRetry(url, attemptsLeft - 1); }, 1000);
         } else {
           showErr(err.message);
