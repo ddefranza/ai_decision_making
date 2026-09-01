@@ -145,7 +145,8 @@ if (!C.apiKey) {
   ebEl.style.borderColor = '#C7D7FF';
   ebEl.style.color = '#1A5CFF';
 
-  fetch('prompts/' + C.condition + '.prompt')
+  var promptBase = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
+  fetch(promptBase + '/prompts/' + C.condition + '.prompt')
     .then(function(r) {
       if (!r.ok) throw new Error(
         'Prompt file not found: prompts/' + C.condition + '.prompt (HTTP ' + r.status + '). ' +
