@@ -146,22 +146,41 @@ if (!C.apiKey) {
   ebEl.style.color = '#1A5CFF';
 
   var promptBase = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
-  fetch(promptBase + '/prompts/' + C.condition + '.prompt')
-    .then(function(r) {
-      if (!r.ok) throw new Error(
-        'Prompt file not found: prompts/' + C.condition + '.prompt (HTTP ' + r.status + '). ' +
-        'Check the file exists in your prompts/ folder and the condition name matches exactly.'
-      );
-      return r.text();
-    })
-    .then(function(text) {
-      C.systemPrompt = text.trim();
-      ebEl.style.display = 'none';
-      enableChat();
-    })
-    .catch(function(err) {
-      showErr(err.message);
-    });
+  var promptUrl  = promptBase + '/prompts/' + C.condition + '.prompt';
+
+  // Fetch with retry — tries up to 3 times before showing an error.
+  // Chat remains disabled until the prompt is confirmed loaded,
+  // preventing any API call going out with an empty system prompt.
+  function fetchPromptWithRetry(url, attemptsLeft) {
+    fetch(url, { cache: 'no-store' })
+      .then(function(r) {
+        if (!r.ok) throw new Error(
+          'Prompt file not found: prompts/' + C.condition + '.prompt (HTTP ' + r.status + '). ' +
+          'Check the file exists in your prompts/ folder and the condition name matches exactly.'
+        );
+        return r.text();
+      })
+      .then(function(text) {
+        text = text.trim();
+        if (!text) throw new Error(
+          'Prompt file is empty: prompts/' + C.condition + '.prompt. ' +
+          'Add your system prompt text to this file.'
+        );
+        C.systemPrompt = text;
+        ebEl.style.display = 'none';
+        enableChat();
+      })
+      .catch(function(err) {
+        if (attemptsLeft > 1) {
+          // Retry after 1 second
+          setTimeout(function() { fetchPromptWithRetry(url, attemptsLeft - 1); }, 1000);
+        } else {
+          showErr(err.message);
+        }
+      });
+  }
+
+  fetchPromptWithRetry(promptUrl, 3);
 }
 
 // ── Receive config via postMessage ───────────────────────
@@ -290,6 +309,12 @@ async function callLLM(txt) {
 async function send() {
   var txt = uiEl.value.trim();
   if (!txt || busy) return;
+  // Hard guard — never send without a system prompt loaded.
+  // This catches any edge case where the chat enabled prematurely.
+  if (!C.systemPrompt) {
+    showErr('System prompt not loaded yet. Please wait a moment and try again.');
+    return;
+  }
   if (C.maxTurns > 0 && turns >= C.maxTurns) {
     showErr('Maximum ' + C.maxTurns + ' exchanges reached. Please click "Finish & save".');
     disableChat(); return;
