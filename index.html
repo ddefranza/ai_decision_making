@@ -199,7 +199,8 @@ window.addEventListener('message', function(e) {
   if (typeof readyInterval !== 'undefined') clearInterval(readyInterval);
   var cfg = e.data.config;
   if (cfg.model)                      C.model        = cfg.model;
-  if (cfg.systemPrompt !== undefined) C.systemPrompt = cfg.systemPrompt;
+  // Only accept systemPrompt from postMessage if fetch hasn't loaded one yet
+  if (cfg.systemPrompt !== undefined && cfg.systemPrompt && !C.systemPrompt) C.systemPrompt = cfg.systemPrompt;
   if (cfg.condition)                  C.condition    = cfg.condition;
   if (cfg.temperature !== undefined)  C.temperature  = parseFloat(cfg.temperature) || 0.3;
   // Accept pmpt_xxx and prompt_xxx (Responses API) and asst_xxx (legacy, sunset Aug 2026)
@@ -315,12 +316,7 @@ async function callLLM(txt) {
 async function send() {
   var txt = uiEl.value.trim();
   if (!txt || busy) return;
-  // Hard guard — never send without a system prompt loaded.
-  // This catches any edge case where the chat enabled prematurely.
-  if (!C.systemPrompt) {
-    showErr('System prompt not loaded yet. Please wait a moment and try again.');
-    return;
-  }
+
   if (C.maxTurns > 0 && turns >= C.maxTurns) {
     showErr('Maximum ' + C.maxTurns + ' exchanges reached. Please click "Finish & save".');
     disableChat(); return;
