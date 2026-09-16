@@ -1,6 +1,16 @@
 Qualtrics.SurveyEngine.addOnReady(function() {
 
-  document.getElementById('NextButton').style.display = 'none';
+  // Hide Next button — retry until Qualtrics renders it,
+  // since it may not exist yet when addOnReady first fires.
+  function hideNextButton() {
+    var btn = document.getElementById('next-button');
+    if (btn) {
+      btn.style.display = 'none';
+    } else {
+      setTimeout(hideNextButton, 100);
+    }
+  }
+  hideNextButton();
 
   var frame = document.getElementById('llm-chat-frame');
 
@@ -22,19 +32,14 @@ Qualtrics.SurveyEngine.addOnReady(function() {
     frame.contentWindow.postMessage({ type: 'llm_chat_config', config: config }, '*');
   }
 
-  // Send config immediately and on every llm_chat_ready signal.
-  // The iframe retries llm_chat_ready every 500ms until it gets
-  // a response, so one of these calls will always get through.
   sendConfig();
 
   window.addEventListener('message', function(e) {
 
-    // Respond to ready signal from iframe
     if (e.data && e.data.type === 'llm_chat_ready') {
       sendConfig();
     }
 
-    // Write data to embedded fields on every turn
     if (e.data && (e.data.type === 'llm_chat_update' || e.data.type === 'llm_chat_finished')) {
       var p = e.data.data;
       Qualtrics.SurveyEngine.setEmbeddedData('chat_conversation_json', JSON.stringify(p.conversation));
@@ -46,12 +51,12 @@ Qualtrics.SurveyEngine.addOnReady(function() {
       Qualtrics.SurveyEngine.setEmbeddedData('chat_timestamp',         p.metadata.timestamp);
       Qualtrics.SurveyEngine.setEmbeddedData('chat_condition',         p.metadata.condition);
       Qualtrics.SurveyEngine.setEmbeddedData('chat_mode',              p.metadata.mode);
-      Qualtrics.SurveyEngine.setEmbeddedData('chat_temperature',        String(p.metadata.temperature));
+      Qualtrics.SurveyEngine.setEmbeddedData('chat_temperature',       String(p.metadata.temperature));
     }
 
-    // Advance survey on finish
     if (e.data && e.data.type === 'llm_chat_finished') {
-      document.getElementById('NextButton').style.display = '';
+      var btn = document.getElementById('next-button');
+      if (btn) btn.style.display = '';
       setTimeout(function() {
         Qualtrics.SurveyEngine.navClick(null, 'NEXT');
       }, 400);
