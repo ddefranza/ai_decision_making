@@ -297,7 +297,7 @@ async function callCompletion(txt) {
   } else {
     headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + C.apiKey };
     var fm = C.systemPrompt ? [{ role: 'system', content: C.systemPrompt }].concat(msgs) : msgs;
-    body = JSON.stringify({ model: C.model, messages: fm, max_tokens: 1024, temperature: C.temperature });
+    body = JSON.stringify({ model: C.model, messages: fm, max_completion_tokens: 1024, temperature: C.temperature });
   }
   var r = await fetch(C.endpoint, { method: 'POST', headers: headers, body: body });
   if (!r.ok) { var err = await r.text(); throw new Error('API ' + r.status + ': ' + err.slice(0, 200)); }
