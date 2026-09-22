@@ -47,7 +47,7 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx);display:flex;flex
   <div class="hdr">
     <div class="dot"></div>
     <span class="htitle">Research Chat</span>
-    <span class="hmodel" id="mb" style="display: none;">—</span>
+    <span class="hmodel" id="mb">—</span>
   </div>
   <div id="eb"></div>
   <div class="msgs" id="msgs">
@@ -366,16 +366,26 @@ function buildPayload() {
 }
 
 function postUpdate() {
-  if (window.parent !== window) window.parent.postMessage({ type: 'llm_chat_update', data: buildPayload() }, '*');
+  if (window.parent !== window) {
+    var payload = buildPayload();
+    console.log('[LLM Widget] postUpdate: turns=' + turns + ' conv_length=' + payload.conversation.length);
+    window.parent.postMessage({ type: 'llm_chat_update', data: payload }, '*');
+  }
 }
 
 // ── Finish ────────────────────────────────────────────────
 fbEl.addEventListener('click', function() {
   var payload = buildPayload();
+  console.log('[LLM Widget] Finish clicked. Turns:', turns, 'Conversation length:', payload.conversation.length);
   fbEl.textContent = '✓ Saved';
   fbEl.style.background = '#ECFDF5'; fbEl.style.borderColor = '#6EE7B7'; fbEl.style.color = '#065F46';
   fbEl.disabled = true; disableChat();
-  if (window.parent !== window) window.parent.postMessage({ type: 'llm_chat_finished', data: payload }, '*');
+  if (window.parent !== window) {
+    // Send both update and finished messages to ensure Qualtrics listener catches one
+    window.parent.postMessage({ type: 'llm_chat_update',   data: payload }, '*');
+    window.parent.postMessage({ type: 'llm_chat_finished', data: payload }, '*');
+    console.log('[LLM Widget] postMessage sent to parent');
+  }
 });
 
 // ── Input UX ──────────────────────────────────────────────
